@@ -12,6 +12,27 @@ output: html_document
 Se descargan las librerías necesarias para la ejecución del proyecto final.
 
 ```{r librerias}
-pacman::p_load(tidyverse)
+pacman::p_load(quantmod,
+               tidyverse)
+```
+
+## Datos
+
+Se inician bajando los datos correspondientes.
+
+```{r descarga_datos}
+# Se bajan los datos del oro de Yahoo Finance
+data_oro <- Cl(getSymbols("GC=F", src = "yahoo", from = "2016-10-19", to = "2026-11-19", auto.assign = FALSE))
+
+# Se omiten los valores nulos de la serie
+data_oro <- data_oro |> 
+  na.omit()
+
+# Se calculan los retornos diarios
+data_oro$retornos <- diff(log(data_oro))
+
+# Se omiten los valores nulos de la serie
+data_oro <- data_oro |> 
+  na.omit()
 ```
 
