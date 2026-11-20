@@ -1,0 +1,17 @@
+---
+title: "Desarrollo del proyecto"
+author: "Alejandro Brenes Calderón, Santiago Fernández Sáenz y Eyeri Méndez Méndez"
+date: "2026-11-20"
+output: html_document
+---
+
+# Preparación inicial
+
+## Librerías
+
+Se descargan las librerías necesarias para la ejecución del proyecto final.
+
+```{r librerias}
+pacman::p_load(tidyverse)
+```
+
