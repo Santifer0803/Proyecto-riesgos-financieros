@@ -7,13 +7,18 @@ output: html_document
 
 # Preparación inicial
 
+Se agregan los elementos previos necesarios para el desarrollo del proyecto.
+
 ## Librerías
 
 Se descargan las librerías necesarias para la ejecución del proyecto final.
 
 ```{r librerias}
-pacman::p_load(quantmod,
-               tidyverse)
+pacman::p_load(astsa,
+               quantmod,
+               rugarch,
+               tidyverse
+               )
 ```
 
 ## Datos
@@ -22,37 +27,76 @@ Se inician bajando los datos correspondientes.
 
 ```{r descarga_datos, warning = FALSE}
 # Se bajan los datos del oro de Yahoo Finance
-data_oro <- Cl(getSymbols("GC=F", src = "yahoo", from = "2016-11-20", to = "2026-11-20", auto.assign = FALSE))
+data_oro <- Cl(
+  getSymbols(
+    "GC=F",
+    src = "yahoo",
+    from = "2016-11-20",
+    to = "2026-11-20",
+    auto.assign = FALSE
+  )
+)
 
 # Se omiten los valores nulos de la serie
-data_oro <- data_oro |> 
+data_oro <- data_oro |>
   na.omit()
 
 # Se calculan los retornos diarios
 data_oro$retornos <- diff(log(data_oro))
 
 # Se omiten los valores nulos de la serie
-data_oro <- data_oro |> 
+data_oro <- data_oro |>
   na.omit()
 
 # Se convierte en un dataframe para mejor manejo
 data_oro <- data.frame(fecha = data_oro[, 0],
-                            precio = data_oro[, 1],
-                            rendimiento = data_oro[, 2]
-                              )
+                       precio = data_oro[, 1],
+                       rendimiento = data_oro[, 2])
 
 # Datos de entrenamiento
-entrenamiento <- data.frame(fecha = as.Date(row.names(data_oro)),
-                            precio = data_oro[, 1],
-                            rendimiento = data_oro[, 2]
-                            ) |> 
+entrenamiento <- data.frame(
+  fecha = as.Date(row.names(data_oro)),
+  precio = data_oro[, 1],
+  rendimiento = data_oro[, 2]
+) |>
   filter(fecha <= ymd("2025-11-20"))
 
 # Datos de prueba
-prueba <- data.frame(fecha = as.Date(row.names(data_oro)),
-                            precio = data_oro[, 1],
-                            rendimiento = data_oro[, 2]
-                            ) |> 
+prueba <- data.frame(
+  fecha = as.Date(row.names(data_oro)),
+  precio = data_oro[, 1],
+  rendimiento = data_oro[, 2]
+) |>
   filter(fecha > ymd("2025-11-20"))
 ```
+
+# Ajuste del modelo
+
+Posteriormente, se busca comprobar las hipótesis necesarias del modelo, al igual que ajustar este.
+
+## Comprobaciones iniciales
+
+Se inicia viendo la autocorrelación de cada serie de tiempo, tanto la original como los residuos.
+
+```{r acfs}
+# ACF de la serie de tiempo original
+acf2(data_oro$GC.F.Close, max.lag = 365, main = "Original")
+
+# ACF de los retornos
+acf2(data_oro$retornos, max.lag = 365, main = "Retornos")
+```
+
+Los retornos disminuyen considerablemente la autocorrelación, por lo que no es necesario pensar en un modelo de alta persistencia ni herramientas similares.
+
+Una vez visualizado esto, se inicia con un gráfico para ver la distribución de los retornos.
+
+```{r distribucion_retornos}
+data_oro |> 
+  ggplot(aes(x = retornos)) +
+  geom_density() +
+  labs(x = "Retornos", y = "Densidad") +
+  theme_minimal()
+```
+
+## Ajuste del GARCH
 
