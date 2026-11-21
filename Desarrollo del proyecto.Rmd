@@ -91,7 +91,7 @@ Los retornos disminuyen considerablemente la autocorrelación, por lo que no es 
 Una vez visualizado esto, se inicia con un gráfico para ver la distribución de los retornos.
 
 ```{r distribucion_retornos}
-data_oro |> 
+data_oro |>
   ggplot(aes(x = retornos)) +
   geom_density() +
   labs(x = "Retornos", y = "Densidad") +
@@ -99,4 +99,81 @@ data_oro |>
 ```
 
 ## Ajuste del GARCH
+
+Posteriormente, se ajusta un GARCH(1, 1). Esta decisión se toma por parsimonia, ya que este tipo de modelo puede ser muy complejo con grados elevados. Además, no es el elemento central de este desarrollo.
+
+```{r ajuste_garch}
+# Características del modelo GARCH(1, 1)
+characts <- ugarchspec(
+  variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+  mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+  distribution.model = "norm"
+)
+
+# Ajuste del GARCH(1, 1) sobre los rendimientos de entrenamiento
+ajuste_garch <- ugarchfit(spec = characts, data = entrenamiento$rendimiento)
+```
+
+Una vez ajustado el modelo, se revisan los parámetros y se hacen algunos diagnósticos, con el objetivo de comprobar el flujo de trabajo hasta este punto.
+
+```{r diagnosticos_garch}
+# Se muestran los parámetros del ajuste del GARCH
+coef(ajuste_garch)
+
+# Se comprueban los resultados del estadístico de Ljung-Box para los residuales
+data.frame(lag = 1:25, p_value = sapply(1:25, function(h) {
+  Box.test(residuals(ajuste_garch, standardize = TRUE),
+           lag = h,
+           type = "Ljung-Box")$p.value
+})) |>
+  ggplot(aes(x = lag, y = p_value)) +
+  geom_hline(
+    yintercept = 0.05,
+    linetype = "dashed",
+    color = "dodgerblue3"
+  ) +
+  geom_point(shape = 1,
+             size = 2.5,
+             stroke = 1) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+  scale_x_continuous(breaks = seq(5, 25, by = 5)) +
+  labs(title = "p values for Ljung-Box Statistic", x = "LAG (H)", y = "p valor") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+# Se comprueban los resultados del estadístico de Ljung-Box para los residuales al cuadrado
+data.frame(lag = 1:25, p_value = sapply(1:25, function(h) {
+  Box.test(residuals(ajuste_garch, standardize = TRUE)^2,
+           lag = h,
+           type = "Ljung-Box")$p.value
+})) |>
+  ggplot(aes(x = lag, y = p_value)) +
+  geom_hline(
+    yintercept = 0.05,
+    linetype = "dashed",
+    color = "dodgerblue3"
+  ) +
+  geom_point(shape = 1,
+             size = 2.5,
+             stroke = 1) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+  scale_x_continuous(breaks = seq(5, 25, by = 5)) +
+  labs(title = "p values for Ljung-Box Statistic", x = "LAG (H)", y = "p valor") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+Los gráficos anteriores indican que los p-valores de todos los rezagos probados son considerablemente mayores que el 0.05 estándar. Esto implica que no hay evidencia para rechazar la hipótesis nula de que los datos son independientes. En otras palabras, esta prueba parece indicar que los residuales se aproximan a un ruido blanco.
+
+Para separar las conclusiones de ambos gráficos, el de los residuales sin potencia parece indicar que la media fue estimada correctamente, mientras que los residuales al cuadrado parecen mostrar que se capturó adecuadamente el agrupamiento de la volatilidad.
+
+Con esto comprobado, se estiman los residuos estandarizados y la desviación estándar de estos errores.
+
+```{r residuos_entrenamiento}
+# Residuos estandarizados del ajuste del GARCH
+resid_train <- residuals(ajuste_garch, standardize = TRUE)
+
+# Error estándar condicional de los errores del GARCH
+sigma_train <- sigma(ajuste_garch)
+```
 
