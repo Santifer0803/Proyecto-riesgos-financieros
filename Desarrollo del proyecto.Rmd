@@ -20,9 +20,9 @@ pacman::p_load(quantmod,
 
 Se inician bajando los datos correspondientes.
 
-```{r descarga_datos}
+```{r descarga_datos, warning = FALSE}
 # Se bajan los datos del oro de Yahoo Finance
-data_oro <- Cl(getSymbols("GC=F", src = "yahoo", from = "2016-10-19", to = "2026-11-19", auto.assign = FALSE))
+data_oro <- Cl(getSymbols("GC=F", src = "yahoo", from = "2016-11-20", to = "2026-11-20", auto.assign = FALSE))
 
 # Se omiten los valores nulos de la serie
 data_oro <- data_oro |> 
@@ -34,5 +34,25 @@ data_oro$retornos <- diff(log(data_oro))
 # Se omiten los valores nulos de la serie
 data_oro <- data_oro |> 
   na.omit()
+
+# Se convierte en un dataframe para mejor manejo
+data_oro <- data.frame(fecha = data_oro[, 0],
+                            precio = data_oro[, 1],
+                            rendimiento = data_oro[, 2]
+                              )
+
+# Datos de entrenamiento
+entrenamiento <- data.frame(fecha = as.Date(row.names(data_oro)),
+                            precio = data_oro[, 1],
+                            rendimiento = data_oro[, 2]
+                            ) |> 
+  filter(fecha <= ymd("2025-11-20"))
+
+# Datos de prueba
+prueba <- data.frame(fecha = as.Date(row.names(data_oro)),
+                            precio = data_oro[, 1],
+                            rendimiento = data_oro[, 2]
+                            ) |> 
+  filter(fecha > ymd("2025-11-20"))
 ```
 
