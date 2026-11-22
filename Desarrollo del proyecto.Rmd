@@ -196,7 +196,7 @@ cuantiles_u <- seq(0.9, 0.99, 0.01)
 umbral <- as.numeric(quantile(perdidas_train, probs = cuantiles_u))
 
 # Se hace una tabla para comparar el resultado de los umbrales
-tabla_umbrales <- do.call(rbind, lapply(seq_along(umbral), function(i) {
+df_umbrales <- do.call(rbind, lapply(seq_along(umbral), function(i) {
   # Se toma un umbral concreto
   u <- as.numeric(umbral[i])
   
@@ -230,7 +230,7 @@ tabla_umbrales <- do.call(rbind, lapply(seq_along(umbral), function(i) {
 }))
 
 # Se imprime tabla de umbrales
-tabla_umbrales
+df_umbrales
 ```
 
 Una vez vista la tabla, se escoge el valor seleccionado del umbral.
