@@ -15,6 +15,7 @@ Se descargan las librerías necesarias para la ejecución del proyecto final.
 
 ```{r librerias}
 pacman::p_load(astsa,
+               evir,
                quantmod,
                rugarch,
                tidyverse
@@ -171,9 +172,77 @@ Con esto comprobado, se estiman los residuos estandarizados y la desviación est
 
 ```{r residuos_entrenamiento}
 # Residuos estandarizados del ajuste del GARCH
-resid_train <- residuals(ajuste_garch, standardize = TRUE)
+resid_train <- as.numeric(residuals(ajuste_garch, standardize = TRUE))
 
 # Error estándar condicional de los errores del GARCH
-sigma_train <- sigma(ajuste_garch)
+sigma_train <- as.numeric(sigma(ajuste_garch))
 ```
 
+## Ajuste de TVE con POT
+
+A partir de aquí se usa el enfoque de *peaks over threshold*, por lo que se siguen los pasos para el ajuste necesario.
+
+```{r seleccion_umbral}
+# Se cambia el signo de los residuos, de forma que se modelen en la cola derecha
+perdidas_train <- - resid_train
+
+# Cuantiles para probar distintos umbrales
+cuantiles_u <- seq(0.9, 0.99, 0.01)
+
+# Umbral del modelo
+umbral <- as.numeric(quantile(perdidas_train, probs = cuantiles_u))
+
+# Se hace una tabla para comparar el resultado de los umbrales
+tabla_umbrales <- do.call(rbind, lapply(seq_along(umbral), function(i) {
+  # Se toma un umbral concreto
+  u <- as.numeric(umbral[i])
+  
+  # Se hace el ajuste con ese umbral
+  ajuste <- pot(perdidas_train, threshold = u)
+  
+  # Parámetro de forma
+  xi <- as.numeric(ajuste$par.ests["xi"])
+  
+  # Parámetro de escala
+  beta <- as.numeric(ajuste$par.ests["beta"])
+  
+  # Error estándar del parámetro de forma
+  se_xi <- as.numeric(ajuste$par.ses["xi"])
+  
+  # Parámetro de escala modificado (invariante al umbral, si el modelo ajusta bien)
+  beta_mod <- beta - xi * u
+  
+  # Cantidad de residuos negativos que superan el umbral (pérdidas positivas)
+  n_exc <- as.numeric(ajuste$n.exceed)
+  
+  # Tabla resultante con todos los parámetros calculados
+  data.frame(
+    prob_u = cuantiles_u[i],
+    porcentaje_excesos = round(100 * n_exc / length(perdidas_train), 2),
+    xi = round(xi, 4),
+    se_xi = round(se_xi, 4),
+    beta_mod = round(beta_mod, 4),
+    convergencia = ajuste$converged
+  )
+}))
+
+# Se imprime tabla de umbrales
+tabla_umbrales
+```
+
+Una vez vista la tabla, se escoge el valor seleccionado del umbral.
+
+```{r ajuste_pot}
+# Umbral del modelo final
+umbral <- as.numeric(quantile(perdidas_train, probs = 0.94))
+
+# Ajuste final del enfoque pot
+ajuste_pot <- pot(perdidas_train, threshold = umbral)
+
+# Características del ajuste
+summary(ajuste_pot)
+```
+
+## Cálculo de las métricas VaR y ES
+
+Posteriormente, se calculan las métricas del VaR y el ES.
