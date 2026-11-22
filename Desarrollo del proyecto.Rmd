@@ -174,6 +174,9 @@ Con esto comprobado, se estiman los residuos estandarizados y la desviación est
 # Residuos estandarizados del ajuste del GARCH
 resid_train <- as.numeric(residuals(ajuste_garch, standardize = TRUE))
 
+# Media del ajuste GARCH
+mu_train <- as.numeric(fitted(ajuste_garch))
+
 # Error estándar condicional de los errores del GARCH
 sigma_train <- as.numeric(sigma(ajuste_garch))
 ```
@@ -245,4 +248,9 @@ summary(ajuste_pot)
 
 ## Cálculo de las métricas VaR y ES
 
-Posteriormente, se calculan las métricas del VaR y el ES.
+Posteriormente, se calculan las métricas del VaR y el ES, iniciando en la escala de los residuos.
+
+```{r metricas_escala_resid}
+
+```
+
