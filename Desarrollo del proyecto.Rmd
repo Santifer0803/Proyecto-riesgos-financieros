@@ -310,3 +310,52 @@ prueba <- prueba |>
   )
 ```
 
+## Escenarios de estrés
+
+Ya que se finalizó con el escenario base, se procede a crear el esccenario de estrés. Para esto, se usarán distintos porcentajes para modificar el valor de las métricas del VaR y el ES.
+
+```{r escenarios_estres}
+# Dataframe para guardar los resultados del escenario de estrés
+df_estres <- do.call(rbind, lapply(1:100, function(i) {
+  # Se extrae el porcentaje a restar
+  porcentaje <- i / 100
+  
+  # Se recalculan las métricas de riesgo con el cambio en la media
+  v_95_mu <- (mu_test * (1 - porcentaje)) - sigma_test * riskmeasures(ajuste_pot, p = 0.95)[[2]]
+  e_95_mu <- (mu_test * (1 - porcentaje)) - sigma_test * riskmeasures(ajuste_pot, p = 0.95)[[3]]
+  v_99_mu <- (mu_test * (1 - porcentaje)) - sigma_test * riskmeasures(ajuste_pot, p = 0.99)[[2]]
+  e_99_mu <- (mu_test * (1 - porcentaje)) - sigma_test * riskmeasures(ajuste_pot, p = 0.99)[[3]]
+  
+  # Se ajusta cada columna a la escala del precio
+  v_95_mu <- prueba$precio_lag * exp(v_95_mu)
+  e_95_mu <- prueba$precio_lag * exp(e_95_mu)
+  v_99_mu <- prueba$precio_lag * exp(v_99_mu)
+  e_99_mu <- prueba$precio_lag * exp(e_99_mu)
+  
+  # Se recalculan las métricas de riesgo con el cambio en la desviación estándar
+  v_95_sd <- mu_test - sigma_test * riskmeasures(ajuste_pot, p = 0.95)[[2]] * (1 + porcentaje)
+  e_95_sd <- mu_test - sigma_test * riskmeasures(ajuste_pot, p = 0.95)[[3]] * (1 + porcentaje)
+  v_99_sd <- mu_test - sigma_test * riskmeasures(ajuste_pot, p = 0.99)[[2]] * (1 + porcentaje)
+  e_99_sd <- mu_test - sigma_test * riskmeasures(ajuste_pot, p = 0.99)[[3]] * (1 + porcentaje)
+  
+  # Se ajusta cada columna a la escala del precio
+  v_95_sd <- prueba$precio_lag * exp(v_95_sd)
+  e_95_sd <- prueba$precio_lag * exp(e_95_sd)
+  v_99_sd <- prueba$precio_lag * exp(v_99_sd)
+  e_99_sd <- prueba$precio_lag * exp(e_99_sd)
+  
+  # Tabla resultante con todos los parámetros calculados
+  data.frame(
+    porcentaje = porcentaje * 100,
+    red_v_95_mu = mean((prueba$var_95 - v_95_mu)),
+    red_e_95_mu = mean((prueba$es_95 - e_95_mu)),
+    red_v_99_mu = mean((prueba$var_99 - v_99_mu)),
+    red_e_99_mu = mean((prueba$es_99 - e_99_mu)),
+    red_v_95_sd = mean((prueba$var_95 - v_95_sd)),
+    red_e_95_sd = mean((prueba$es_95 - e_95_sd)),
+    red_v_99_sd = mean((prueba$var_99 - v_99_sd)),
+    red_e_99_sd = mean((prueba$es_99 - e_99_sd))
+  )
+}))
+```
+
