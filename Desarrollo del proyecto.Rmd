@@ -187,7 +187,7 @@ A partir de aquí se usa el enfoque de *peaks over threshold*, por lo que se sig
 
 ```{r seleccion_umbral}
 # Se cambia el signo de los residuos, de forma que se modelen en la cola derecha
-perdidas_train <- - resid_train
+perdidas_train <- -resid_train
 
 # Cuantiles para probar distintos umbrales
 cuantiles_u <- seq(0.9, 0.99, 0.01)
@@ -251,6 +251,45 @@ summary(ajuste_pot)
 Posteriormente, se calculan las métricas del VaR y el ES, iniciando en la escala de los residuos.
 
 ```{r metricas_escala_resid}
+# Métricas sobre los datos de entrenamiento (en la escala de rendimientos)
+entrenamiento <- entrenamiento |>
+  mutate(
+    var_95 = mu_train - sigma_train * riskmeasures(ajuste_pot, p = 0.95)[[2]],
+    es_95 = mu_train - sigma_train * riskmeasures(ajuste_pot, p = 0.95)[[3]],
+    var_99 = mu_train - sigma_train * riskmeasures(ajuste_pot, p = 0.99)[[2]],
+    es_99 = mu_train - sigma_train * riskmeasures(ajuste_pot, p = 0.99)[[3]]
+  )
 
+# Pronóstico de la volatilidad a futuro con parámetros variables
+pronostico <- ugarchroll(
+  spec = characts,                                      # Características del GARCH
+  data = c(
+    as.numeric(entrenamiento$rendimiento),
+    as.numeric(prueba$rendimiento)
+  ),                                                    # Datos de rendimientos
+  n.ahead = 1,                                          # Ventana a estimar (diaria)
+  forecast.length = length(prueba$rendimiento),         # Cantidad de datos de prueba
+  refit.every = round(length(prueba$rendimiento) / 12), # Frecuencia de reestimación de parámetros
+  refit.window = "moving",                              # Tipo de reestimación
+  calculate.VaR = FALSE                                 # Cálculo del VaR (no se agrega)
+)
+
+# Dataframe con la información pronosticada
+df_futuro <- as.data.frame(pronostico, which = "density")
+
+# Media pronosticada
+mu_test <- as.numeric(df_futuro$Mu)
+
+# Volatilidad estimada
+sigma_test <- as.numeric(df_futuro$Sigma)
+
+# Rendimientos pronosticados para los datos de prueba
+prueba <- prueba |>
+  mutate(
+    var_95 = mu_test - sigma_test * riskmeasures(ajuste_pot, p = 0.95)[[2]],
+    es_95 = mu_test - sigma_test * riskmeasures(ajuste_pot, p = 0.95)[[3]],
+    var_99 = mu_test - sigma_test * riskmeasures(ajuste_pot, p = 0.99)[[2]],
+    es_99 = mu_test - sigma_test * riskmeasures(ajuste_pot, p = 0.99)[[3]]
+  )
 ```
 
