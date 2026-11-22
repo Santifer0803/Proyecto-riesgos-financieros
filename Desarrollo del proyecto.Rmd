@@ -293,3 +293,20 @@ prueba <- prueba |>
   )
 ```
 
+Una vez obtenidas todas estas métricas, se pasan a la escala del precio original, ya que el precio de los rendimientos podría distorsionar su interpretación.
+
+```{r escala_precios}
+# Se pone el precio del día anterior en cada observación
+prueba <- prueba |>
+  mutate(precio_lag = lag(precio, default = entrenamiento$precio[[nrow(entrenamiento)]]))
+
+# Se cambia cada columna a la escala del precio
+prueba <- prueba |>
+  mutate(
+    var_95 = precio_lag * exp(var_95),
+    es_95 = precio_lag * exp(es_95),
+    var_99 = precio_lag * exp(var_99),
+    es_99 = precio_lag * exp(es_99)
+  )
+```
+
