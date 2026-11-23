@@ -137,7 +137,7 @@ characts <- ugarchspec(
 ajuste_garch <- ugarchfit(spec = characts, data = entrenamiento$rendimiento)
 ```
 
-Una vez ajustado el modelo, se revisan los parámetros y se hacen algunos diagnósticos, con el objetivo de comprobar el flujo de trabajo hasta este punto.
+Una vez ajustado el modelo, se hacen algunos diagnósticos, con el objetivo de comprobar el flujo de trabajo hasta este punto.
 
 ```{r diagnosticos_garch}
 # Se comprueban los resultados del estadístico de Ljung-Box para los residuales
