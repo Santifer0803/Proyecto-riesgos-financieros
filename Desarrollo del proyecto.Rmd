@@ -16,9 +16,11 @@ Se descargan las librerías necesarias para la ejecución del proyecto final.
 ```{r librerias}
 pacman::p_load(astsa,
                evir,
+               PerformanceAnalytics,
                quantmod,
                rugarch,
-               tidyverse
+               tidyverse,
+               xts
                )
 ```
 
@@ -357,5 +359,50 @@ df_estres <- do.call(rbind, lapply(1:100, function(i) {
     red_e_99_sd = mean((prueba$es_99 - e_99_sd))
   )
 }))
+```
+
+## Medidas a través de *drawdown*
+
+Como elemento adicional para el análisis, se muestran algunas métricas de drawdown con su respectiva interpretación.
+
+```{r drawdown}
+# Se convierten ambos retornos a simples, de forma que el paquete básico los lea con mayor facilidad
+retornos_train <- exp(xts(entrenamiento$rendimiento, order.by = as.Date(entrenamiento$fecha))) - 1
+retornos_test <- exp(xts(prueba$rendimiento, order.by = as.Date(prueba$fecha))) - 1
+
+# Tablas con la información de los drawdowns
+dd_train <- table.Drawdowns(retornos_train, geometric = TRUE)
+dd_test <- table.Drawdowns(retornos_test, geometric = TRUE)
+
+# Dataframe para comparar métricas
+df_dd <- data.frame(
+  "Medida" = c(
+    "MDD",
+    "ADD",
+    "CDaR 95",
+    "CDaR 99",
+    "max_duracion",
+    "max_caida",
+    "max_recuperacion"
+  ),
+  "Entrenamiento" = c(
+    maxDrawdown(retornos_train),
+    AverageDrawdown(retornos_train),
+    CDD(retornos_train, p = 0.95),
+    CDD(retornos_train, p = 0.99),
+    max(dd_train$Length, na.rm = TRUE),
+    max(dd_train$`To Trough`, na.rm = TRUE),
+    max(dd_train$Recovery, na.rm = TRUE)
+  ),
+  "Prueba" = c(
+    maxDrawdown(retornos_test),
+    AverageDrawdown(retornos_test),
+    CDD(retornos_test, p = 0.95),
+    CDD(retornos_test, p = 0.99),
+    max(dd_test$Length, na.rm = TRUE),
+    max(dd_test$`To Trough`, na.rm = TRUE),
+    max(dd_test$Recovery, na.rm = TRUE)
+  )
+)
 ```
 
