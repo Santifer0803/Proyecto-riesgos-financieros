@@ -393,31 +393,33 @@ dd_test <- table.Drawdowns(retornos_test, geometric = TRUE)
 
 # Dataframe para comparar métricas
 df_dd <- data.frame(
-  "Medida" = c(
-    "MDD",
-    "ADD",
-    "CDaR 95",
-    "CDaR 99",
-    "max_duracion",
-    "max_caida",
-    "max_recuperacion"
-  ),
-  "Entrenamiento" = c(
+  Conjunto = c("Entrenamiento", "Prueba"),
+  MDD = c(
     maxDrawdown(retornos_train),
-    AverageDrawdown(retornos_train),
-    CDD(retornos_train, p = 0.95),
-    CDD(retornos_train, p = 0.99),
-    max(dd_train$Length, na.rm = TRUE),
-    max(dd_train$`To Trough`, na.rm = TRUE),
-    max(dd_train$Recovery, na.rm = TRUE)
+    maxDrawdown(retornos_test)
   ),
-  "Prueba" = c(
-    maxDrawdown(retornos_test),
-    AverageDrawdown(retornos_test),
-    CDD(retornos_test, p = 0.95),
-    CDD(retornos_test, p = 0.99),
-    max(dd_test$Length, na.rm = TRUE),
-    max(dd_test$`To Trough`, na.rm = TRUE),
+  ADD = c(
+    AverageDrawdown(retornos_train),
+    AverageDrawdown(retornos_test)
+  ),
+  CDaR_95 = c(
+    CDD(retornos_train, p = 0.95),
+    CDD(retornos_test, p = 0.95)
+  ),
+  CDaR_99 = c(
+    CDD(retornos_train, p = 0.99),
+    CDD(retornos_test, p = 0.99)
+  ),
+  max_duracion = c(
+    max(dd_train$Length, na.rm = TRUE),
+    max(dd_test$Length, na.rm = TRUE)
+  ),
+  max_caida = c(
+    max(dd_train$`To Trough`, na.rm = TRUE),
+    max(dd_test$`To Trough`, na.rm = TRUE)
+  ),
+  max_recuperacion = c(
+    max(dd_train$Recovery, na.rm = TRUE),
     max(dd_test$Recovery, na.rm = TRUE)
   )
 )
@@ -486,7 +488,17 @@ prueba |>
   theme_minimal()
 ```
 
-Ya que los gráficos anteriores pueden resultar algo confusos, se resumen los datos más importantes en la siguiente tabla. Aquí se muestra, de izquierda a derecha: el cuantil utilizado, la cantidad de observaciones que son más bajas que el VaR predicho en esa fecha, la diferencia negativa más grande entre el precio y el ES de las observaciones que sobrepasaron el VaR, la mediana de la diferencia entre el precio y el ES de las observaciones que sobrepasaron al VaR y la diferencia positiva más grande entre el precio y el ES de las observaciones que sobrepasaron el VaR.
+Ya que los gráficos anteriores pueden resultar algo confusos, se resumen los datos más importantes en la siguiente tabla. Aquí se muestra, de izquierda a derecha:
+
+* El cuantil utilizado.
+
+* La cantidad de observaciones que son más bajas que el VaR predicho en esa fecha.
+
+* La diferencia negativa más grande entre el precio y el ES de las observaciones que sobrepasaron el VaR.
+
+* La mediana de la diferencia entre el precio y el ES de las observaciones que sobrepasaron al VaR.
+
+* La diferencia positiva más grande entre el precio y el ES de las observaciones que sobrepasaron el VaR.
 
 ```{r resumen_metricas}
 data.frame(
@@ -513,8 +525,82 @@ data.frame(
 
 ## Escenario de estrés
 
+Posteriormente, se muestran los escenarios de estrés, separados por el elemento que se modificó en cada caso.
 
+```{r graficos_estres}
+# Reducción al reducir la media del GARCH
+df_estres |> 
+  pivot_longer(cols = c(red_v_95_mu, red_e_95_mu, red_v_99_mu, red_e_99_mu),
+               names_to = "escenario",
+               values_to = "valor") |>
+  ggplot(aes(x = porcentaje, y = valor, color = escenario)) +
+  geom_line() +
+  scale_color_manual(
+    values = c("red_v_95_mu" = colores[[1]],
+               "red_e_95_mu" = colores[[2]],
+               "red_v_99_mu"  = colores[[4]],
+               "red_e_99_mu" = colores[[6]]),
+    labels = c("red_v_95_mu" = "VaR 95%",
+               "red_e_95_mu" = "ES 95%",
+               "red_v_99_mu"  = "VaR 99%",
+               "red_e_99_mu" = "ES 99%")
+  ) +
+  labs(x = "Porcentaje modificado", y = "Cambio del precio con respecto al escenario base", color = "Escenario") +
+  theme_minimal()
+
+# Reducción al aumentar la varianza del GARCH
+df_estres |> 
+  pivot_longer(cols = c(red_v_95_sd, red_e_95_sd, red_v_99_sd, red_e_99_sd),
+               names_to = "escenario",
+               values_to = "valor") |>
+  ggplot(aes(x = porcentaje, y = valor, color = escenario)) +
+  geom_line() +
+  scale_color_manual(
+    values = c("red_v_95_sd" = colores[[1]],
+               "red_e_95_sd" = colores[[2]],
+               "red_v_99_sd"  = colores[[4]],
+               "red_e_99_sd" = colores[[6]]),
+    labels = c("red_v_95_sd" = "VaR 95%",
+               "red_e_95_sd" = "ES 95%",
+               "red_v_99_sd"  = "VaR 99%",
+               "red_e_99_sd" = "ES 99%")
+  ) +
+  labs(x = "Porcentaje modificado", y = "Cambio del precio con respecto al escenario base", color = "Escenario") +
+  theme_minimal()
+```
+
+En este caso se realizaron 2 escenarios. El primero muestra una reducción porcentual de la media del GARCH (de 1% a 100%), el segundo muestra un aumento porcentual de la varianza del GARCH (de 1% a 100%). En ambos casos se hizo la comparación con respecto al escenario base y, debido a que eran múltiples observaciones, se tomó la media.
+
+La métrica mencionada anteriormente corresponde, entonces, a la diferencia entre el escenario base y el escenario estresado del precio. Esto suponiendo que se modifica alguno de los 2 parámetros (media o varianza).
+
+Con esto explicado, se puede ver que el primer gráfico muestra diferencias de, como mucho, 1 dólar por debajo de los umbrales del escenario base. Esto se entiende debido a que la magnitud de la media es muy baja, además, no se utilizó un modelo para estimar la media, por lo que esta es constante.
+
+Por otro lado, el segundo gráfico sí muestra un cambio significativo con respecto a las pérdidas de los umbrales del escenario base. Esto indica que la varianza tiene un gran peso al estimar el GARCH.
 
 ## Enfoque drawdown
 
+Para este enfoque, hay que entender que se definen los "picos" como los rendimientos más altos observados hasta cierta fecha. De esta manera, los *drawdowns* son la diferencia entre el "pico" y el rendimiento observado ese día. Esto implica que los *drawdowns* son 0 si hay un nuevo "pico", o negativos en cualquier otro caso.
 
+Teniendo en cuenta estas definiciones, se obtienen algunas de las métricas más relevantes de la distribución de *drawdowns* a continuación.
+
+```{r resultados_dd}
+df_dd
+```
+
+La tabla anterior se divide para datos de entrenamiento y prueba, los cuales no fueron estimados de ninguna manera. Recordar que en los datos de entrenamiento se incluyen 10 años, mientas que los de prueba solo tienen 1.
+
+Se da un breve resumen de cada una de las métricas, mostradas de izquierda a derecha:
+
+* *Maximum drawdown* (MDD) es la caída porcentual más grande registrada desde un pico hasta un valle (mínimo local).
+
+* *Average drawdown* (ADD) es el promedio de los *drawdowns* (sale positivo, pero se debe recordar que todos los drawdowns son negativos o 0).
+
+* *Conditional drawdown-at-risk* (CDaR) es el promedio de los *drawdowns* que superan cierto cuantil (el ES de los *drawdowns*, básicamente).
+
+* Duración máxima (max_duracion) es la máxima cantidad de días hábiles que pasó desde que se encontró un pico hasta encontrar otro (distancia entre máximos).
+
+* Caída máxima (max_caida) es la máxima cantidad de días desde un pico hasta un valle (distancia de un máximo a un mínimo).
+
+* Recuperación máxima (max_recuperacion) es la máxima cantidad de días desde un valle hasta el pico que tenía registrado ahí (distancia de un mínimo hasta empatar/superar al máximo).
+
+Hay que decir que se debe ser muy cuidadoso con este análisis, ya que el hecho de poner una fecha de corte implica que el activo podría seguir en una época de *drawdowns* y, en consecuencia, la duración de caída, recuperación y duración máxima podrían salir como nulas. En la tabla se omiten estos casos, pero es algo que puede afectar mucho al análisis, principalmente, con los datos de prueba, que tienen menos observaciones.
